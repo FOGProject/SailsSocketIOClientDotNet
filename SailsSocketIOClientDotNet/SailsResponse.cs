@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System;
+using Newtonsoft.Json.Linq;
 
 namespace FOG.SailsSocketIOClientDotNet
 {
@@ -24,8 +25,22 @@ namespace FOG.SailsSocketIOClientDotNet
             StatusCode = (Raw["statusCode"] == null) ? 200 : int.Parse(rawResponse.statusCode.ToString());
 
             // Try to parse the header and body
-            Body = (RawBody == null) ? new JObject() : JObject.Parse(RawBody); 
-            Headers = (RawHeaders == null) ? new JObject() : JObject.Parse(RawHeaders);
+            try
+            {
+                Body = JObject.Parse(RawBody);
+            }
+            catch (Exception)
+            {
+                Body = new JObject();
+            }
+            try
+            {
+                Headers = JObject.Parse(RawHeaders);
+            }
+            catch (Exception)
+            {
+                Headers = new JObject();
+            }
 
         }
     }

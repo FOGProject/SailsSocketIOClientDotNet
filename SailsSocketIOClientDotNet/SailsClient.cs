@@ -1,5 +1,8 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Quobject.SocketIoClientDotNet.Client;
 
@@ -12,6 +15,8 @@ namespace FOG.SailsSocketIOClientDotNet
         private const string DefaultLanguage = "csharp";
         private const string DefaultPlatform = "desktop";
 
+        private Dictionary<string, string> _headers;
+
         public Socket Socket { get; private set; }
 
         public SailsClient(string url, SDKInfo sdkInfo = null)
@@ -19,8 +24,25 @@ namespace FOG.SailsSocketIOClientDotNet
             if (sdkInfo == null)
                 sdkInfo = new SDKInfo(DefaultVersion, DefaultLanguage, DefaultPlatform);
 
+            _headers = new Dictionary<string, string>();
+
             var options = new IO.Options {QueryString = sdkInfo.VersionString};
             Socket = IO.Socket(url, options);
+        }
+
+        public void SetHeader(string name, string value)
+        {
+            _headers[name] = value;
+        }
+
+        public string GetHeader(string name)
+        {
+            return _headers[name];
+        }
+
+        public void RemoveHeader(string name)
+        {
+            _headers.Remove(name);
         }
 
         private async Task<dynamic> _emitFrom(SailsRequest request)
@@ -38,17 +60,22 @@ namespace FOG.SailsSocketIOClientDotNet
             return response;
         }
 
-        public async Task<SailsResponse> Request(string url, JObject data, JObject headers, SailsRequest.HTTPAction method)
+        public async Task<SailsResponse> Request(string url, JObject data, Dictionary<string, string> headers, SailsRequest.HTTPAction method)
         {
             // Default data and headers to empty objects
             if (data == null) data = new JObject();
-            if (headers == null) headers = new JObject();
+            if (headers == null) headers = new Dictionary<string, string>();
+
+            // Merge in the global headers
+            // Let the local headers override any duplicates in the globals
+            headers = headers.Concat(_headers).GroupBy(d => d.Key).ToDictionary(d => d.Key, d => d.First().Value);
+            var jHeaders = JObject.Parse(JsonConvert.SerializeObject(headers));
 
             // Remove trailing slashes and spaces to make packets smaller
             url = Regex.Replace(url, @"/^(.+)\/*\s*$/", "$1");
             var request = new SailsRequest { 
                 Data = data,
-                Headers = headers,
+                Headers = jHeaders,
                 Method = method,
                 URL = url
             };
