@@ -1,0 +1,18 @@
+version: 1.0.{build}
+
+environment:
+  nodejs_version: "6"
+
+install:
+  # Get the latest stable version of Node.js or io.js
+  - ps: Install-Product node $env:nodejs_version
+  # install modules
+  - 
+
+build:
+  verbosity: minimal
+
+before_test:
+  - npm --prefix ./TestServer install ./TestServer
+  - npm install forever -g
+  - forever start ./TestServer/app.js
